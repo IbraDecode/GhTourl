@@ -5,27 +5,32 @@ const path = require('path');
 
 const bot = new Telegraf('7756314780:AAFA_g2EcjOKCXpOu7WuhzfLCOp-9TN7l-A');
 
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GITHUB_OWNER = process.env.GITHUB_OWNER;
+const GITHUB_REPO = process.env.GITHUB_REPO;
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
+
 async function uploadFile(ctx, file, fileName) {
   try {
     const fileId = file.file_id;
     const fileLink = await ctx.telegram.getFileLink(fileId);
-    const response = await axios.get(fileLink, { responseType: 'stream' });
-    const tempPath = path.join('/tmp', fileName);
-    const writer = fs.createWriteStream(tempPath);
-    response.data.pipe(writer);
-    await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
-    const uploadUrl = `https://transfer.sh/${encodeURIComponent(fileName)}`;
-    const uploadResponse = await axios.put(uploadUrl, fs.createReadStream(tempPath), {
+    const response = await axios.get(fileLink, { responseType: 'arraybuffer' });
+    const fileBuffer = Buffer.from(response.data);
+    const content = fileBuffer.toString('base64');
+    const filePath = `files/${fileName}`;
+    const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`;
+    const uploadResponse = await axios.put(apiUrl, {
+      message: `Upload ${fileName}`,
+      content: content,
+      branch: GITHUB_BRANCH
+    }, {
       headers: {
-        'Content-Type': 'application/octet-stream'
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json'
       }
     });
-    const url = uploadResponse.data.trim();
-    ctx.reply(`URL: ${url}`);
-    fs.unlinkSync(tempPath);
+    const rawUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}`;
+    ctx.reply(`URL: ${rawUrl}`);
   } catch (error) {
     console.error(error);
     ctx.reply('Error uploading file.');
