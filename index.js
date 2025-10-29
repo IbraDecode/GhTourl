@@ -3,8 +3,7 @@ const { Telegraf } = require('telegraf');
 const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
 const sharp = require('sharp');
-const express = require('express');
-const rateLimit = require('express-rate-limit');
+const cron = require('node-cron');
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN || '7756314780:AAFA_g2EcjOKCXpOu7WuhzfLCOp-9TN7l-A');
 
@@ -14,6 +13,7 @@ const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const UPLOAD_LIMIT = 10; // per user per day
+const ADMIN_ID = process.env.ADMIN_ID; // Telegram user ID for admin
 const userUploads = new Map();
 const db = new sqlite3.Database('./uploads.db');
 
@@ -105,6 +105,13 @@ bot.command('stats', (ctx) => {
     ctx.reply(`📊 Total uploads: ${row.total}`);
   });
 });
+bot.command('admin', (ctx) => {
+  if (ctx.from.id != ADMIN_ID) return ctx.reply('❌ Access denied.');
+  db.get(`SELECT COUNT(*) as total, COUNT(DISTINCT substr(timestamp, 0, 11)) as days FROM uploads`, [], (err, row) => {
+    if (err) return ctx.reply('❌ Error.');
+    ctx.reply(`📊 Admin Stats:\nTotal uploads: ${row.total}\nActive days: ${row.days}`);
+  });
+});
 bot.command('list', (ctx) => {
   db.all(`SELECT filename, url, timestamp FROM uploads ORDER BY timestamp DESC LIMIT 10`, [], (err, rows) => {
     if (err) return ctx.reply('❌ Error fetching list.');
@@ -179,29 +186,73 @@ bot.on('sticker', async (ctx) => {
   await uploadFile(ctx, sticker, fileName);
 });
 
-// Web server for simple interface
-const app = express();
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+// Batch upload for media groups
+const batchUploads = new Map();
+bot.on('message', async (ctx) => {
+  if (ctx.message.media_group_id) {
+    const groupId = ctx.message.media_group_id;
+    if (!batchUploads.has(groupId)) {
+      batchUploads.set(groupId, []);
+    }
+    batchUploads.get(groupId).push(ctx.message);
+    // Wait 5 seconds for all messages in group
+    setTimeout(async () => {
+      const messages = batchUploads.get(groupId);
+      if (messages) {
+        batchUploads.delete(groupId);
+        ctx.reply(`⏳ Uploading ${messages.length} files...`);
+        for (const msg of messages) {
+          // Extract file from message
+          let file, fileName, isPhoto = false;
+          if (msg.document) {
+            file = msg.document;
+            fileName = file.file_name;
+          } else if (msg.photo) {
+            file = msg.photo[msg.photo.length - 1];
+            fileName = 'photo.jpg';
+            isPhoto = true;
+          } else if (msg.audio) {
+            file = msg.audio;
+            fileName = file.file_name || 'audio.mp3';
+          } else if (msg.video) {
+            file = msg.video;
+            fileName = file.file_name || 'video.mp4';
+          } else continue;
+          await uploadFile(ctx, file, fileName, isPhoto);
+        }
+        ctx.reply('✅ Batch upload completed.');
+      }
+    }, 5000);
+  }
 });
-app.use(limiter);
-app.use(express.json());
 
-app.get('/', (req, res) => {
-  db.all(`SELECT filename, url, timestamp FROM uploads ORDER BY timestamp DESC LIMIT 20`, [], (err, rows) => {
-    if (err) return res.status(500).send('Error');
-    let html = '<h1>Uploaded Files</h1><ul>';
-    rows.forEach(row => {
-      html += `<li><a href="${row.url}">${row.filename}</a> - ${row.timestamp}</li>`;
-    });
-    html += '</ul>';
-    res.send(html);
+// Scheduled cleanup: delete files older than 30 days
+cron.schedule('0 0 * * *', () => {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  db.all(`SELECT path, sha FROM uploads WHERE timestamp < ?`, [thirtyDaysAgo], async (err, rows) => {
+    if (err) return console.error('Cleanup error:', err);
+    for (const row of rows) {
+      try {
+        const deleteUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${row.path}`;
+        await axios.delete(deleteUrl, {
+          data: {
+            message: 'Auto delete old file',
+            sha: row.sha,
+            branch: GITHUB_BRANCH
+          },
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        db.run(`DELETE FROM uploads WHERE path = ?`, [row.path]);
+        console.log(`Deleted old file: ${row.path}`);
+      } catch (error) {
+        console.error('Error deleting old file:', error.message);
+      }
+    }
   });
 });
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Web server on port ${PORT}`));
 
 bot.launch();
 console.log('Bot started...');

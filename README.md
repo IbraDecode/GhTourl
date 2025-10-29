@@ -22,12 +22,10 @@ Bot Telegram yang mengubah file menjadi URL via GitHub raw.
 
 2. Set env vars dan jalankan:
    ```
-   GITHUB_TOKEN=your_token GITHUB_OWNER=your_username GITHUB_REPO=your_repo node index.js
+   GITHUB_TOKEN=your_token GITHUB_OWNER=your_username GITHUB_REPO=your_repo ADMIN_ID=your_id node index.js
    ```
 
 Bot akan mendengarkan pesan dengan file dan upload ke repo GitHub, lalu kirim raw URL.
-
-Web interface tersedia di http://localhost:3000 untuk view uploads.
 
 ## Fitur
 
@@ -38,10 +36,11 @@ Web interface tersedia di http://localhost:3000 untuk view uploads.
 - Database SQLite untuk track uploads
 - Compression otomatis untuk gambar (JPEG 80% quality)
 - Rate limiting: 10 uploads per user per hari
+- Batch upload untuk media groups
+- Auto cleanup files older than 30 days
 - Pesan status saat upload dengan emoji
 - Error handling dan logging yang detail
 - Timeout 60 detik untuk download/upload
-- Command /start, /help, /status, /list, /delete, /stats
+- Command /start, /help, /status, /list, /delete, /stats, /admin
 - Inline keyboard dengan button "Open Raw URL" dan "View on GitHub"
 - Pesan interaktif dan user-friendly
-- Web interface sederhana di port 3000 untuk view uploads
