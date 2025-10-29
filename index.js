@@ -19,6 +19,25 @@ const WEBHOOK_URL = process.env.WEBHOOK_URL; // Optional webhook URL
 const db = new sqlite3.Database('./uploads.db');
 const userUploads = new Map();
 
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS uploads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filename TEXT,
+    path TEXT,
+    url TEXT,
+    sha TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS banned_users (
+    id INTEGER PRIMARY KEY,
+    banned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS user_stats (
+    user_id INTEGER PRIMARY KEY,
+    uploads INTEGER DEFAULT 0
+  )`);
+});
+
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
   console.error('Missing required environment variables: GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO');
   process.exit(1);
@@ -419,7 +438,7 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
-const API_PORT = process.env.API_PORT || 4000;
+const API_PORT = process.env.API_PORT || 4001;
 app.listen(API_PORT, () => console.log(`API server on port ${API_PORT}`));
 
 if (WEBHOOK_URL) {
