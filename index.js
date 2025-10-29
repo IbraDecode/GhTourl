@@ -116,7 +116,19 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
   }
 }
 
-bot.start((ctx) => ctx.reply('👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.', { parse_mode: 'Markdown' }));
+bot.start(async (ctx) => {
+  const keyboard = {
+    inline_keyboard: [
+      [{ text: '👨‍💻 Developer', url: 'https://t.me/ibradecodee' }],
+      [{ text: '📢 Channel', url: 'https://t.me/ibradecodee' }]
+    ]
+  };
+  await ctx.replyWithPhoto('https://via.placeholder.com/400x200/007bff/ffffff?text=GitHub+To+URL+Bot', {
+    caption: '👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.',
+    parse_mode: 'Markdown',
+    reply_markup: keyboard
+  });
+});
 bot.help((ctx) => ctx.reply('📤 *Kirim file untuk upload.*\n\n*Commands:*\n/start - Start bot\n/help - Show help\n/status - Check bot status\n/list - List recent uploads\n/search <query> - Search files\n/delete <filename> - Delete file\n/stats - Show upload stats\n/top - Top uploaders\n/report <message> - Report issue\n\n*Admin:*\n/admin - Admin stats\n/ban <id> - Ban user\n/unban <id> - Unban user\n/backup - Backup database\n\n⚠️ Max file size: 50MB', { parse_mode: 'Markdown' }));
 bot.command('status', (ctx) => ctx.reply('🤖 *Bot online dan siap upload file!* \n\n✅ Semua sistem berjalan lancar.', { parse_mode: 'Markdown' }));
 bot.command('stats', (ctx) => {
