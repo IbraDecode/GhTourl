@@ -137,6 +137,7 @@ bot.action('menu', (ctx) => {
       [{ text: '📊 Stats', callback_data: 'stats' }],
       [{ text: '🔍 Search', callback_data: 'search_prompt' }],
       [{ text: '🏆 Top Uploaders', callback_data: 'top' }],
+      [{ text: '🗑️ Delete File', callback_data: 'delete_prompt' }],
       [{ text: '❓ Help', callback_data: 'help' }],
       [{ text: '🔙 Back', callback_data: 'back' }]
     ]
@@ -170,6 +171,11 @@ bot.action('search_prompt', (ctx) => {
   ctx.reply('🔍 Kirim query untuk search: /search <filename>');
 });
 
+bot.action('delete_prompt', (ctx) => {
+  ctx.answerCbQuery();
+  ctx.reply('🗑️ Kirim nama file untuk delete: /delete <filename>');
+});
+
 bot.action('top', (ctx) => {
   db.all(`SELECT user_id, uploads FROM user_stats ORDER BY uploads DESC LIMIT 5`, [], (err, rows) => {
     if (err) return ctx.answerCbQuery('Error');
@@ -182,7 +188,7 @@ bot.action('top', (ctx) => {
 
 bot.action('help', (ctx) => {
   ctx.answerCbQuery();
-  ctx.reply('❓ Help: Kirim file untuk upload. Commands: /list, /stats, /search, /top, /report');
+  ctx.reply('❓ Help: Kirim file untuk upload. Commands: /list, /stats, /search, /top, /report\n\nAdmin: /admin, /ban, /unban, /backup');
 });
 
 bot.action('back', (ctx) => {
