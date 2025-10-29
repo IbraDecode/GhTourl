@@ -119,12 +119,80 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
 bot.start(async (ctx) => {
   const keyboard = {
     inline_keyboard: [
-      [{ text: '👨‍💻 Developer', url: 'https://t.me/ibradecodee' }],
-      [{ text: '📢 Channel', url: 'https://t.me/ibradecodee' }]
+      [{ text: '📋 Menu', callback_data: 'menu' }],
+      [{ text: '👨‍💻 Developer', url: 'https://t.me/ibradecodee' }, { text: '📢 Channel', url: 'https://t.me/ibradecodee' }]
     ]
   };
   await ctx.replyWithPhoto('https://raw.githubusercontent.com/IbraDecode/Ubotku/main/IMG_20251014_234435_752.jpg', {
     caption: '👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.',
+    parse_mode: 'Markdown',
+    reply_markup: keyboard
+  });
+});
+
+bot.action('menu', (ctx) => {
+  const menuKeyboard = {
+    inline_keyboard: [
+      [{ text: '📋 List Uploads', callback_data: 'list' }],
+      [{ text: '📊 Stats', callback_data: 'stats' }],
+      [{ text: '🔍 Search', callback_data: 'search_prompt' }],
+      [{ text: '🏆 Top Uploaders', callback_data: 'top' }],
+      [{ text: '❓ Help', callback_data: 'help' }],
+      [{ text: '🔙 Back', callback_data: 'back' }]
+    ]
+  };
+  ctx.editMessageCaption('📋 *Menu Bot*\n\nPilih opsi di bawah:', {
+    parse_mode: 'Markdown',
+    reply_markup: menuKeyboard
+  });
+});
+
+bot.action('list', (ctx) => {
+  db.all(`SELECT filename, url FROM uploads ORDER BY timestamp DESC LIMIT 5`, [], (err, rows) => {
+    if (err) return ctx.answerCbQuery('Error');
+    let message = '📋 Recent uploads:\n\n';
+    rows.forEach(row => message += `📁 ${row.filename}\n🔗 ${row.url}\n\n`);
+    ctx.answerCbQuery();
+    ctx.reply(message);
+  });
+});
+
+bot.action('stats', (ctx) => {
+  db.get(`SELECT COUNT(*) as total FROM uploads`, [], (err, row) => {
+    if (err) return ctx.answerCbQuery('Error');
+    ctx.answerCbQuery();
+    ctx.reply(`📊 Total uploads: ${row.total}`);
+  });
+});
+
+bot.action('search_prompt', (ctx) => {
+  ctx.answerCbQuery();
+  ctx.reply('🔍 Kirim query untuk search: /search <filename>');
+});
+
+bot.action('top', (ctx) => {
+  db.all(`SELECT user_id, uploads FROM user_stats ORDER BY uploads DESC LIMIT 5`, [], (err, rows) => {
+    if (err) return ctx.answerCbQuery('Error');
+    let message = '🏆 Top uploaders:\n\n';
+    rows.forEach((row, index) => message += `${index + 1}. User ${row.user_id}: ${row.uploads}\n`);
+    ctx.answerCbQuery();
+    ctx.reply(message);
+  });
+});
+
+bot.action('help', (ctx) => {
+  ctx.answerCbQuery();
+  ctx.reply('❓ Help: Kirim file untuk upload. Commands: /list, /stats, /search, /top, /report');
+});
+
+bot.action('back', (ctx) => {
+  const keyboard = {
+    inline_keyboard: [
+      [{ text: '📋 Menu', callback_data: 'menu' }],
+      [{ text: '👨‍💻 Developer', url: 'https://t.me/ibradecodee' }, { text: '📢 Channel', url: 'https://t.me/ibradecodee' }]
+    ]
+  };
+  ctx.editMessageCaption('👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.', {
     parse_mode: 'Markdown',
     reply_markup: keyboard
   });
