@@ -116,14 +116,15 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
   }
 }
 
-bot.start((ctx) => {
+bot.start(async (ctx) => {
   const keyboard = {
     inline_keyboard: [
       [{ text: '👨‍💻 Developer', url: 'https://t.me/ibradecodee' }],
       [{ text: '📢 Channel', url: 'https://t.me/ibradecodee' }]
     ]
   };
-  ctx.reply('👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.', {
+  await ctx.replyWithPhoto('https://raw.githubusercontent.com/IbraDecode/Ubotku/main/IMG_20251014_234435_752.jpg', {
+    caption: '👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.',
     parse_mode: 'Markdown',
     reply_markup: keyboard
   });
