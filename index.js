@@ -504,6 +504,30 @@ app.get('/api/stats', (req, res) => {
   });
 });
 
+app.get('/', (req, res) => {
+  db.all(`SELECT filename, url, timestamp FROM uploads ORDER BY timestamp DESC LIMIT 50`, [], (err, rows) => {
+    if (err) return res.status(500).send('Database error');
+    let html = `
+    <html>
+    <head><title>GitHub To URL Bot - Dashboard</title><style>body{font-family:Arial;margin:20px;} table{border-collapse:collapse;width:100%;} th,td{border:1px solid #ddd;padding:8px;text-align:left;} th{background-color:#f2f2f2;}</style></head>
+    <body>
+    <h1>📤 GitHub To URL Bot Dashboard</h1>
+    <p>Total uploads: ${rows.length}</p>
+    <table>
+    <tr><th>Filename</th><th>URL</th><th>Timestamp</th></tr>
+    `;
+    rows.forEach(row => {
+      html += `<tr><td>${row.filename}</td><td><a href="${row.url}" target="_blank">${row.url}</a></td><td>${row.timestamp}</td></tr>`;
+    });
+    html += `
+    </table>
+    </body>
+    </html>
+    `;
+    res.send(html);
+  });
+});
+
 const API_PORT = process.env.API_PORT || 4001;
 app.listen(API_PORT, () => console.log(`API server on port ${API_PORT}`));
 
