@@ -116,15 +116,14 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
   }
 }
 
-bot.start(async (ctx) => {
+bot.start((ctx) => {
   const keyboard = {
     inline_keyboard: [
       [{ text: '👨‍💻 Developer', url: 'https://t.me/ibradecodee' }],
       [{ text: '📢 Channel', url: 'https://t.me/ibradecodee' }]
     ]
   };
-  await ctx.replyWithPhoto('https://via.placeholder.com/400x200/007bff/ffffff?text=GitHub+To+URL+Bot', {
-    caption: '👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.',
+  ctx.reply('👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.', {
     parse_mode: 'Markdown',
     reply_markup: keyboard
   });
