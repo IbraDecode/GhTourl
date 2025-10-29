@@ -14,27 +14,27 @@ const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const UPLOAD_LIMIT = 10; // per user per day
-const ADMIN_ID = process.env.ADMIN_ID; // Telegram user ID for admin
+const ADMIN_ID = process.env.ADMIN_ID || '6924389613'; // Telegram user ID for admin
 const WEBHOOK_URL = process.env.WEBHOOK_URL; // Optional webhook URL
-const db = new sqlite3.Database('./uploads.db');
+const REQUIRED_CHANNEL = '@ibradecodee'; // Channel to join
 
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS uploads (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    filename TEXT,
-    path TEXT,
-    url TEXT,
-    sha TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS banned_users (
-    id INTEGER PRIMARY KEY,
-    banned_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS user_stats (
-    user_id INTEGER PRIMARY KEY,
-    uploads INTEGER DEFAULT 0
-  )`);
+// Middleware to check channel membership
+bot.use(async (ctx, next) => {
+  if (ctx.from && ctx.chat.type === 'private') {
+    try {
+      const member = await ctx.telegram.getChatMember(REQUIRED_CHANNEL, ctx.from.id);
+      if (member.status === 'left' || member.status === 'kicked') {
+        return ctx.reply('🚫 Anda harus join channel @ibradecodee dulu untuk menggunakan bot.', {
+          reply_markup: {
+            inline_keyboard: [[{ text: 'Join Channel', url: 'https://t.me/ibradecodee' }]]
+          }
+        });
+      }
+    } catch (error) {
+      return ctx.reply('🚫 Error checking membership. Pastikan Anda join @ibradecodee.');
+    }
+  }
+  return next();
 });
 
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
