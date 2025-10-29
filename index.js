@@ -14,9 +14,10 @@ const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const UPLOAD_LIMIT = 10; // per user per day
-const ADMIN_ID = process.env.ADMIN_ID || '6924389613'; // Telegram user ID for admin
+const ADMIN_ID = process.env.ADMIN_ID; // Telegram user ID for admin
 const WEBHOOK_URL = process.env.WEBHOOK_URL; // Optional webhook URL
 const db = new sqlite3.Database('./uploads.db');
+const userUploads = new Map();
 
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
   console.error('Missing required environment variables: GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO');
