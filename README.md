@@ -6,9 +6,10 @@ Bot Telegram yang mengubah file menjadi URL via GitHub raw.
 
 1. Buat repo GitHub untuk menyimpan file.
 2. Buat Personal Access Token di GitHub dengan scope `repo`.
-3. Set environment variables:
-   - `GITHUB_TOKEN`: Token GitHub Anda
-   - `GITHUB_OWNER`: Username GitHub Anda
+3. Copy `.env.example` ke `.env` dan isi dengan data Anda:
+   - `TELEGRAM_TOKEN`: Token bot Telegram
+   - `GITHUB_TOKEN`: Token GitHub
+   - `GITHUB_OWNER`: Username GitHub
    - `GITHUB_REPO`: Nama repo
    - `GITHUB_BRANCH`: Branch (default: main)
 
@@ -19,14 +20,17 @@ Bot Telegram yang mengubah file menjadi URL via GitHub raw.
    npm install
    ```
 
-2. Set env vars dan jalankan:
+2. Jalankan:
    ```
-   GITHUB_TOKEN=your_token GITHUB_OWNER=your_username GITHUB_REPO=your_repo node index.js
+   node index.js
    ```
 
-Bot akan mendengarkan pesan dengan file (document, photo, audio, video) dan upload ke repo GitHub, lalu kirim raw URL.
+Bot akan mendengarkan pesan dengan file dan upload ke repo GitHub, lalu kirim raw URL.
 
 ## Fitur
 
-- Mendukung document, photo, audio, video
-- Upload ke GitHub dan dapatkan raw URL
+- Mendukung document, photo, audio, video, voice, sticker
+- Nama file unik dengan timestamp untuk hindari overwrite
+- Pesan status saat upload
+- Error handling yang lebih baik
+- Timeout 60 detik untuk download/upload
