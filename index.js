@@ -26,6 +26,10 @@ db.serialize(() => {
     sha TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+  db.run(`CREATE TABLE IF NOT EXISTS banned_users (
+    id INTEGER PRIMARY KEY,
+    banned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 });
 
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
@@ -36,6 +40,10 @@ if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
 async function uploadFile(ctx, file, fileName, isPhoto = false) {
   try {
     const userId = ctx.from.id;
+    // Check if banned
+    db.get(`SELECT id FROM banned_users WHERE id = ?`, [userId], (err, row) => {
+      if (row) return ctx.reply('🚫 You are banned from uploading.');
+    });
     const today = new Date().toDateString();
     const key = `${userId}-${today}`;
     if (!userUploads.has(key)) userUploads.set(key, 0);
@@ -97,7 +105,7 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
 }
 
 bot.start((ctx) => ctx.reply('👋 Halo! Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. Max 50MB.'));
-bot.help((ctx) => ctx.reply('📤 Kirim file untuk upload.\n\nCommands:\n/start - Start bot\n/help - Show help\n/status - Check bot status\n/list - List recent uploads\n/delete <filename> - Delete file\n/stats - Show upload stats\n\nMax file size: 50MB'));
+bot.help((ctx) => ctx.reply('📤 Kirim file untuk upload.\n\nCommands:\n/start - Start bot\n/help - Show help\n/status - Check bot status\n/list - List recent uploads\n/search <query> - Search files\n/delete <filename> - Delete file\n/stats - Show upload stats\n\nAdmin:\n/admin - Admin stats\n/ban <id> - Ban user\n/unban <id> - Unban user\n\nMax file size: 50MB'));
 bot.command('status', (ctx) => ctx.reply('🤖 Bot online dan siap upload file!'));
 bot.command('stats', (ctx) => {
   db.get(`SELECT COUNT(*) as total FROM uploads`, [], (err, row) => {
@@ -111,6 +119,35 @@ bot.command('admin', (ctx) => {
     if (err) return ctx.reply('❌ Error.');
     ctx.reply(`📊 Admin Stats:\nTotal uploads: ${row.total}\nActive days: ${row.days}`);
   });
+});
+bot.command('search', (ctx) => {
+  const query = ctx.message.text.split(' ').slice(1).join(' ');
+  if (!query) return ctx.reply('❓ Usage: /search <filename>');
+  db.all(`SELECT filename, url FROM uploads WHERE filename LIKE ? ORDER BY timestamp DESC LIMIT 5`, [`%${query}%`], (err, rows) => {
+    if (err) return ctx.reply('❌ Error searching.');
+    if (rows.length === 0) return ctx.reply('📂 No files found.');
+    let message = '🔍 Search results:\n\n';
+    rows.forEach(row => {
+      message += `📁 ${row.filename}\n🔗 ${row.url}\n\n`;
+    });
+    ctx.reply(message);
+  });
+});
+bot.command('ban', (ctx) => {
+  if (ctx.from.id != ADMIN_ID) return ctx.reply('❌ Access denied.');
+  const args = ctx.message.text.split(' ');
+  if (args.length < 2) return ctx.reply('❓ Usage: /ban <user_id>');
+  const userId = parseInt(args[1]);
+  db.run(`INSERT OR IGNORE INTO banned_users (id) VALUES (?)`, [userId]);
+  ctx.reply(`🚫 User ${userId} banned.`);
+});
+bot.command('unban', (ctx) => {
+  if (ctx.from.id != ADMIN_ID) return ctx.reply('❌ Access denied.');
+  const args = ctx.message.text.split(' ');
+  if (args.length < 2) return ctx.reply('❓ Usage: /unban <user_id>');
+  const userId = parseInt(args[1]);
+  db.run(`DELETE FROM banned_users WHERE id = ?`, [userId]);
+  ctx.reply(`✅ User ${userId} unbanned.`);
 });
 bot.command('list', (ctx) => {
   db.all(`SELECT filename, url, timestamp FROM uploads ORDER BY timestamp DESC LIMIT 10`, [], (err, rows) => {
