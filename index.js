@@ -2,7 +2,7 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
-const sharp = require('sharp');
+// const sharp = require('sharp'); // Disabled for compatibility
 const cron = require('node-cron');
 const express = require('express');
 
@@ -24,9 +24,10 @@ bot.use(async (ctx, next) => {
     try {
       const member = await ctx.telegram.getChatMember(REQUIRED_CHANNEL, ctx.from.id);
       if (member.status === 'left' || member.status === 'kicked') {
-        return ctx.reply('🚫 Anda harus join channel @ibradecodee dulu untuk menggunakan bot.', {
+        return ctx.reply('🚫 *Anda harus join channel @ibradecodee dulu untuk menggunakan bot.*\n\nKlik button di bawah untuk join. 👇', {
+          parse_mode: 'Markdown',
           reply_markup: {
-            inline_keyboard: [[{ text: 'Join Channel', url: 'https://t.me/ibradecodee' }]]
+            inline_keyboard: [[{ text: '🔗 Join Channel', url: 'https://t.me/ibradecodee' }]]
           }
         });
       }
@@ -47,7 +48,7 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
     const userId = ctx.from.id;
     // Check if banned
     db.get(`SELECT id FROM banned_users WHERE id = ?`, [userId], (err, row) => {
-      if (row) return ctx.reply('🚫 You are banned from uploading.');
+      if (row) return ctx.reply('🚫 *You are banned from uploading.*\n\nContact admin for appeal. 📞', { parse_mode: 'Markdown' });
     });
     const today = new Date().toDateString();
     const key = `${userId}-${today}`;
@@ -56,18 +57,18 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
       return ctx.reply('🚫 Upload limit reached. Max 10 files per day.');
     }
     if (file.file_size && file.file_size > MAX_FILE_SIZE) {
-      return ctx.reply('🚫 File too large. Maximum size is 50MB.');
+      return ctx.reply('🚫 *File too large.* Maximum size is 50MB. 📏', { parse_mode: 'Markdown' });
     }
-    ctx.reply('⏳ Uploading file... Please wait.');
+    ctx.reply('⏳ *Uploading file...* \n\nMohon tunggu sebentar ⏰', { parse_mode: 'Markdown' });
     console.log(`Uploading ${fileName} (${file.file_size} bytes)`);
     const fileId = file.file_id;
     const fileLink = await ctx.telegram.getFileLink(fileId);
     const response = await axios.get(fileLink, { responseType: 'arraybuffer', timeout: 60000 });
     let fileBuffer = Buffer.from(response.data);
-    if (isPhoto) {
-      // Compress image
-      fileBuffer = await sharp(fileBuffer).jpeg({ quality: 80 }).toBuffer();
-    }
+    // if (isPhoto) {
+    //   // Compress image
+    //   fileBuffer = await sharp(fileBuffer).jpeg({ quality: 80 }).toBuffer();
+    // }
     const content = fileBuffer.toString('base64');
     const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const timestamp = Date.now();
@@ -94,7 +95,7 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
         [{ text: 'View on GitHub', url: githubUrl }]
       ]
     };
-    ctx.reply(`✅ File uploaded successfully!\n\n📁 File: ${fileName}\n🔗 Raw URL: ${rawUrl}`, { reply_markup: keyboard });
+    ctx.reply(`✅ *File uploaded successfully!* \n\n📁 *File:* ${fileName}\n🔗 *Raw URL:* ${rawUrl}\n\n🎉 Terima kasih telah menggunakan bot!`, { parse_mode: 'Markdown', reply_markup: keyboard });
     // Save to DB
     db.run(`INSERT INTO uploads (filename, path, url, sha) VALUES (?, ?, ?, ?)`, [fileName, filePath, rawUrl, sha]);
     db.run(`INSERT OR IGNORE INTO user_stats (user_id, uploads) VALUES (?, 0)`, [userId]);
@@ -108,16 +109,16 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
   } catch (error) {
     console.error('Upload error:', error.message);
     if (error.response && error.response.status === 422) {
-      ctx.reply('❌ Upload failed: File might be too large or repository issue. Try a smaller file.');
+      ctx.reply('❌ *Upload failed:* File might be too large or repository issue. Try a smaller file. 📉', { parse_mode: 'Markdown' });
     } else {
-      ctx.reply('❌ Error uploading file. Please try again later.');
+      ctx.reply('❌ *Error uploading file.* Please try again. 🔄', { parse_mode: 'Markdown' });
     }
   }
 }
 
-bot.start((ctx) => ctx.reply('👋 Halo! Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. Max 50MB.'));
-bot.help((ctx) => ctx.reply('📤 Kirim file untuk upload.\n\nCommands:\n/start - Start bot\n/help - Show help\n/status - Check bot status\n/list - List recent uploads\n/search <query> - Search files\n/delete <filename> - Delete file\n/stats - Show upload stats\n/top - Top uploaders\n/report <message> - Report issue\n\nAdmin:\n/admin - Admin stats\n/ban <id> - Ban user\n/unban <id> - Unban user\n/backup - Backup database\n\nMax file size: 50MB'));
-bot.command('status', (ctx) => ctx.reply('🤖 Bot online dan siap upload file!'));
+bot.start((ctx) => ctx.reply('👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.', { parse_mode: 'Markdown' }));
+bot.help((ctx) => ctx.reply('📤 *Kirim file untuk upload.*\n\n*Commands:*\n/start - Start bot\n/help - Show help\n/status - Check bot status\n/list - List recent uploads\n/search <query> - Search files\n/delete <filename> - Delete file\n/stats - Show upload stats\n/top - Top uploaders\n/report <message> - Report issue\n\n*Admin:*\n/admin - Admin stats\n/ban <id> - Ban user\n/unban <id> - Unban user\n/backup - Backup database\n\n⚠️ Max file size: 50MB', { parse_mode: 'Markdown' }));
+bot.command('status', (ctx) => ctx.reply('🤖 *Bot online dan siap upload file!* \n\n✅ Semua sistem berjalan lancar.', { parse_mode: 'Markdown' }));
 bot.command('stats', (ctx) => {
   db.get(`SELECT COUNT(*) as total FROM uploads`, [], (err, row) => {
     if (err) return ctx.reply('❌ Error fetching stats.');

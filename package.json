@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "telegraf": "^4.15.3",
+    "telegraf": "^3.38.0",
     "axios": "^1.6.2",
     "dotenv": "^16.3.1",
     "sqlite3": "^5.1.6",
