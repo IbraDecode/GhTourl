@@ -16,38 +16,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const UPLOAD_LIMIT = 10; // per user per day
 const ADMIN_ID = process.env.ADMIN_ID || '6924389613'; // Telegram user ID for admin
 const WEBHOOK_URL = process.env.WEBHOOK_URL; // Optional webhook URL
-const REQUIRED_CHANNEL = '@ibradecodee'; // Channel to join
-
-// Middleware to check channel membership
-bot.use(async (ctx, next) => {
-  if (ctx.from && ctx.chat.type === 'private') {
-    try {
-      const member = await ctx.telegram.getChatMember(REQUIRED_CHANNEL, ctx.from.id);
-      if (member.status === 'left' || member.status === 'kicked') {
-        return ctx.reply('🚫 *Anda harus join channel @ibradecodee dulu untuk menggunakan bot.*\n\nKlik button di bawah untuk join. 👇', {
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [[{ text: '🔗 Join Channel', url: 'https://t.me/ibradecodee' }]]
-          }
-        });
-      }
-    } catch (error) {
-      return ctx.reply('🚫 Error checking membership. Pastikan Anda join @ibradecodee.');
-    }
-  }
-  // Check banned
-  if (ctx.from) {
-    const userId = ctx.from.id;
-    db.get(`SELECT id FROM banned_users WHERE id = ?`, [userId], (err, row) => {
-      if (row) {
-        return ctx.reply('🚫 *You are banned from uploading.*\n\nContact admin for appeal. 📞', { parse_mode: 'Markdown' });
-      }
-      return next();
-    });
-  } else {
-    return next();
-  }
-});
+const db = new sqlite3.Database('./uploads.db');
 
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
   console.error('Missing required environment variables: GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO');
