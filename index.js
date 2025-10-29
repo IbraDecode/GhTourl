@@ -2,6 +2,9 @@ require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
+const sharp = require('sharp');
+const express = require('express');
+const rateLimit = require('express-rate-limit');
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN || '7756314780:AAFA_g2EcjOKCXpOu7WuhzfLCOp-9TN7l-A');
 
@@ -10,6 +13,8 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const UPLOAD_LIMIT = 10; // per user per day
+const userUploads = new Map();
 const db = new sqlite3.Database('./uploads.db');
 
 db.serialize(() => {
@@ -28,8 +33,15 @@ if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
   process.exit(1);
 }
 
-async function uploadFile(ctx, file, fileName) {
+async function uploadFile(ctx, file, fileName, isPhoto = false) {
   try {
+    const userId = ctx.from.id;
+    const today = new Date().toDateString();
+    const key = `${userId}-${today}`;
+    if (!userUploads.has(key)) userUploads.set(key, 0);
+    if (userUploads.get(key) >= UPLOAD_LIMIT) {
+      return ctx.reply('🚫 Upload limit reached. Max 10 files per day.');
+    }
     if (file.file_size && file.file_size > MAX_FILE_SIZE) {
       return ctx.reply('🚫 File too large. Maximum size is 50MB.');
     }
@@ -38,7 +50,11 @@ async function uploadFile(ctx, file, fileName) {
     const fileId = file.file_id;
     const fileLink = await ctx.telegram.getFileLink(fileId);
     const response = await axios.get(fileLink, { responseType: 'arraybuffer', timeout: 60000 });
-    const fileBuffer = Buffer.from(response.data);
+    let fileBuffer = Buffer.from(response.data);
+    if (isPhoto) {
+      // Compress image
+      fileBuffer = await sharp(fileBuffer).jpeg({ quality: 80 }).toBuffer();
+    }
     const content = fileBuffer.toString('base64');
     const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const timestamp = Date.now();
@@ -68,6 +84,7 @@ async function uploadFile(ctx, file, fileName) {
     ctx.reply(`✅ File uploaded successfully!\n\n📁 File: ${fileName}\n🔗 Raw URL: ${rawUrl}`, { reply_markup: keyboard });
     // Save to DB
     db.run(`INSERT INTO uploads (filename, path, url, sha) VALUES (?, ?, ?, ?)`, [fileName, filePath, rawUrl, sha]);
+    userUploads.set(key, userUploads.get(key) + 1);
     console.log(`Uploaded: ${rawUrl}`);
   } catch (error) {
     console.error('Upload error:', error.message);
@@ -135,7 +152,7 @@ bot.on('document', async (ctx) => {
 bot.on('photo', async (ctx) => {
   const photo = ctx.message.photo[ctx.message.photo.length - 1];
   const fileName = 'photo.jpg';
-  await uploadFile(ctx, photo, fileName);
+  await uploadFile(ctx, photo, fileName, true);
 });
 
 bot.on('audio', async (ctx) => {
@@ -162,8 +179,38 @@ bot.on('sticker', async (ctx) => {
   await uploadFile(ctx, sticker, fileName);
 });
 
+// Web server for simple interface
+const app = express();
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
+app.use(express.json());
+
+app.get('/', (req, res) => {
+  db.all(`SELECT filename, url, timestamp FROM uploads ORDER BY timestamp DESC LIMIT 20`, [], (err, rows) => {
+    if (err) return res.status(500).send('Error');
+    let html = '<h1>Uploaded Files</h1><ul>';
+    rows.forEach(row => {
+      html += `<li><a href="${row.url}">${row.filename}</a> - ${row.timestamp}</li>`;
+    });
+    html += '</ul>';
+    res.send(html);
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Web server on port ${PORT}`));
+
 bot.launch();
 console.log('Bot started...');
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => {
+  bot.stop('SIGINT');
+  db.close();
+});
+process.once('SIGTERM', () => {
+  bot.stop('SIGTERM');
+  db.close();
+});
