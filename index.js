@@ -18,9 +18,9 @@ if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
 async function uploadFile(ctx, file, fileName) {
   try {
     if (file.file_size && file.file_size > MAX_FILE_SIZE) {
-      return ctx.reply('File too large. Max 50MB.');
+      return ctx.reply('🚫 File too large. Maximum size is 50MB.');
     }
-    ctx.reply('Uploading file...');
+    ctx.reply('⏳ Uploading file... Please wait.');
     console.log(`Uploading ${fileName} (${file.file_size} bytes)`);
     const fileId = file.file_id;
     const fileLink = await ctx.telegram.getFileLink(fileId);
@@ -44,16 +44,28 @@ async function uploadFile(ctx, file, fileName) {
       timeout: 60000
     });
     const rawUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}`;
-    ctx.reply(`URL: ${rawUrl}`);
+    const githubUrl = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${filePath}`;
+    const keyboard = {
+      inline_keyboard: [
+        [{ text: 'Open Raw URL', url: rawUrl }],
+        [{ text: 'View on GitHub', url: githubUrl }]
+      ]
+    };
+    ctx.reply(`✅ File uploaded successfully!\n\n📁 File: ${fileName}\n🔗 Raw URL: ${rawUrl}`, { reply_markup: keyboard });
     console.log(`Uploaded: ${rawUrl}`);
   } catch (error) {
     console.error('Upload error:', error.message);
-    ctx.reply('Error uploading file. Please try again.');
+    if (error.response && error.response.status === 422) {
+      ctx.reply('❌ Upload failed: File might be too large or repository issue. Try a smaller file.');
+    } else {
+      ctx.reply('❌ Error uploading file. Please try again later.');
+    }
   }
 }
 
-bot.start((ctx) => ctx.reply('Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. Max 50MB.'));
-bot.help((ctx) => ctx.reply('Kirim file apa saja, bot akan upload ke GitHub dan kirim raw URL. Ukuran max 50MB.'));
+bot.start((ctx) => ctx.reply('👋 Halo! Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. Max 50MB.'));
+bot.help((ctx) => ctx.reply('📤 Kirim file apa saja, bot akan upload ke GitHub dan kirim raw URL dengan button interaktif. Ukuran max 50MB.'));
+bot.command('status', (ctx) => ctx.reply('🤖 Bot online dan siap upload file!'));
 
 bot.on('document', async (ctx) => {
   const file = ctx.message.document;
