@@ -8,6 +8,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
   console.error('Missing required environment variables: GITHUB_TOKEN, GITHUB_OWNER, GITHUB_REPO');
@@ -16,15 +17,20 @@ if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
 
 async function uploadFile(ctx, file, fileName) {
   try {
+    if (file.file_size && file.file_size > MAX_FILE_SIZE) {
+      return ctx.reply('File too large. Max 50MB.');
+    }
     ctx.reply('Uploading file...');
+    console.log(`Uploading ${fileName} (${file.file_size} bytes)`);
     const fileId = file.file_id;
     const fileLink = await ctx.telegram.getFileLink(fileId);
     const response = await axios.get(fileLink, { responseType: 'arraybuffer', timeout: 60000 });
     const fileBuffer = Buffer.from(response.data);
     const content = fileBuffer.toString('base64');
+    const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const timestamp = Date.now();
     const uniqueFileName = `${timestamp}-${fileName}`;
-    const filePath = `files/${uniqueFileName}`;
+    const filePath = `files/${date}/${uniqueFileName}`;
     const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`;
     const uploadResponse = await axios.put(apiUrl, {
       message: `Upload ${fileName}`,
@@ -39,13 +45,15 @@ async function uploadFile(ctx, file, fileName) {
     });
     const rawUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}`;
     ctx.reply(`URL: ${rawUrl}`);
+    console.log(`Uploaded: ${rawUrl}`);
   } catch (error) {
     console.error('Upload error:', error.message);
     ctx.reply('Error uploading file. Please try again.');
   }
 }
 
-bot.start((ctx) => ctx.reply('Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw.'));
+bot.start((ctx) => ctx.reply('Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. Max 50MB.'));
+bot.help((ctx) => ctx.reply('Kirim file apa saja, bot akan upload ke GitHub dan kirim raw URL. Ukuran max 50MB.'));
 
 bot.on('document', async (ctx) => {
   const file = ctx.message.document;
@@ -85,3 +93,6 @@ bot.on('sticker', async (ctx) => {
 
 bot.launch();
 console.log('Bot started...');
+
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));

@@ -31,6 +31,9 @@ Bot akan mendengarkan pesan dengan file dan upload ke repo GitHub, lalu kirim ra
 
 - Mendukung document, photo, audio, video, voice, sticker
 - Nama file unik dengan timestamp untuk hindari overwrite
+- Organize file dalam folder berdasarkan tanggal (files/YYYY-MM-DD/)
+- Batas ukuran file 50MB (karena limit GitHub)
 - Pesan status saat upload
-- Error handling yang lebih baik
+- Error handling dan logging
 - Timeout 60 detik untuk download/upload
+- Command /start dan /help
