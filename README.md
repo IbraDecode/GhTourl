@@ -33,9 +33,10 @@ Bot akan mendengarkan pesan dengan file dan upload ke repo GitHub, lalu kirim ra
 - Nama file unik dengan timestamp untuk hindari overwrite
 - Organize file dalam folder berdasarkan tanggal (files/YYYY-MM-DD/)
 - Batas ukuran file 50MB (karena limit GitHub)
+- Database SQLite untuk track uploads
 - Pesan status saat upload dengan emoji
 - Error handling dan logging yang detail
 - Timeout 60 detik untuk download/upload
-- Command /start, /help, /status
+- Command /start, /help, /status, /list, /delete, /stats
 - Inline keyboard dengan button "Open Raw URL" dan "View on GitHub"
 - Pesan interaktif dan user-friendly
