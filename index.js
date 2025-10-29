@@ -35,7 +35,18 @@ bot.use(async (ctx, next) => {
       return ctx.reply('🚫 Error checking membership. Pastikan Anda join @ibradecodee.');
     }
   }
-  return next();
+  // Check banned
+  if (ctx.from) {
+    const userId = ctx.from.id;
+    db.get(`SELECT id FROM banned_users WHERE id = ?`, [userId], (err, row) => {
+      if (row) {
+        return ctx.reply('🚫 *You are banned from uploading.*\n\nContact admin for appeal. 📞', { parse_mode: 'Markdown' });
+      }
+      return next();
+    });
+  } else {
+    return next();
+  }
 });
 
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
@@ -46,10 +57,6 @@ if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
 async function uploadFile(ctx, file, fileName, isPhoto = false) {
   try {
     const userId = ctx.from.id;
-    // Check if banned
-    db.get(`SELECT id FROM banned_users WHERE id = ?`, [userId], (err, row) => {
-      if (row) return ctx.reply('🚫 *You are banned from uploading.*\n\nContact admin for appeal. 📞', { parse_mode: 'Markdown' });
-    });
     const today = new Date().toDateString();
     const key = `${userId}-${today}`;
     if (!userUploads.has(key)) userUploads.set(key, 0);
