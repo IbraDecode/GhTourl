@@ -4,6 +4,7 @@ const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
 const sharp = require('sharp');
 const cron = require('node-cron');
+const express = require('express');
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN || '7756314780:AAFA_g2EcjOKCXpOu7WuhzfLCOp-9TN7l-A');
 
@@ -325,6 +326,37 @@ cron.schedule('0 0 * * *', () => {
     }
   });
 });
+
+// API server
+const app = express();
+app.use(express.json());
+
+app.get('/api/uploads', (req, res) => {
+  const limit = req.query.limit || 10;
+  db.all(`SELECT filename, url, timestamp FROM uploads ORDER BY timestamp DESC LIMIT ?`, [limit], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(rows);
+  });
+});
+
+app.get('/api/search', (req, res) => {
+  const query = req.query.q;
+  if (!query) return res.status(400).json({ error: 'Query required' });
+  db.all(`SELECT filename, url FROM uploads WHERE filename LIKE ? ORDER BY timestamp DESC LIMIT 10`, [`%${query}%`], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(rows);
+  });
+});
+
+app.get('/api/stats', (req, res) => {
+  db.get(`SELECT COUNT(*) as total FROM uploads`, [], (err, row) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json({ total_uploads: row.total });
+  });
+});
+
+const API_PORT = process.env.API_PORT || 4000;
+app.listen(API_PORT, () => console.log(`API server on port ${API_PORT}`));
 
 if (WEBHOOK_URL) {
   bot.launch({
