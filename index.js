@@ -43,6 +43,71 @@ if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
   process.exit(1);
 }
 
+const REQUIRED_CHANNEL = '@ibradecodee'; // Channel to join
+
+const messages = {
+  en: {
+    start: '👋 *Hello!* \n\n📤 Send file (document, photo, audio, video, voice, sticker) to get GitHub raw URL. \n\n⚠️ Max 50MB\n\n💡 This bot uses GitHub for hosting.',
+    uploading: '⏳ *Uploading file...* \n\nPlease wait ⏰',
+    uploaded: '✅ *File uploaded successfully!* \n\n📁 *File:* {file}\n🔗 *Raw URL:* {url}\n\n🎉 Thanks for using the bot!',
+    error: '❌ *Error uploading file.* Please try again.',
+    banned: '🚫 *You are banned from uploading.*\n\nContact admin for appeal. 📞',
+    join: '🚫 *You must join channel @ibradecodee first to use the bot.*\n\nClick button below to join. 👇',
+    large: '🚫 *File too large.* Maximum size is 50MB. 📏',
+    help: '📤 *Send file to upload.*\n\n*Commands:*\n/start - Start bot\n/help - Show help\n/status - Check bot status\n/list - List recent uploads\n/search <query> - Search files\n/delete <filename> - Delete file\n/stats - Show upload stats\n/top - Top uploaders\n/report <message> - Report issue\n\n*Admin:*\n/admin - Admin stats\n/ban <id> - Ban user\n/unban <id> - Unban user\n/backup - Backup database\n\n⚠️ Max file size: 50MB',
+    status: '🤖 *Bot online and ready to upload!* \n\n✅ All systems running smoothly.',
+    menu: '📋 *Menu*\n\nChoose option below:',
+    list: '📋 Recent uploads:\n\n',
+    stats: '📊 Total uploads: {total}',
+    top: '🏆 Top uploaders:\n\n',
+    search_prompt: '🔍 Send query to search: /search <filename>',
+    delete_prompt: '🗑️ Send filename to delete: /delete <filename>',
+    report_sent: '✅ Report sent to admin.',
+    admin_stats: '📊 Admin Stats:\nTotal uploads: {total}\nActive days: {days}',
+    banned_user: '🚫 User {id} banned.',
+    unbanned_user: '✅ User {id} unbanned.',
+    backup_done: '✅ Database backed up to {path}',
+    no_files: '📂 No files found.',
+    access_denied: '❌ Access denied.'
+  },
+  id: {
+    start: '👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.',
+    uploading: '⏳ *Uploading file...* \n\nMohon tunggu ⏰',
+    uploaded: '✅ *File uploaded successfully!* \n\n📁 *File:* {file}\n🔗 *Raw URL:* {url}\n\n🎉 Terima kasih telah menggunakan bot!',
+    error: '❌ *Error uploading file.* Please try again.',
+    banned: '🚫 *You are banned from uploading.*\n\nContact admin for appeal. 📞',
+    join: '🚫 *Anda harus join channel @ibradecodee dulu untuk menggunakan bot.*\n\nKlik button di bawah untuk join. 👇',
+    large: '🚫 *File too large.* Maximum size is 50MB. 📏',
+    help: '📤 *Kirim file untuk upload.*\n\n*Commands:*\n/start - Start bot\n/help - Show help\n/status - Check bot status\n/list - List recent uploads\n/search <query> - Search files\n/delete <filename> - Delete file\n/stats - Show upload stats\n/top - Top uploaders\n/report <message> - Report issue\n\n*Admin:*\n/admin - Admin stats\n/ban <id> - Ban user\n/unban <id> - Unban user\n/backup - Backup database\n\n⚠️ Max file size: 50MB',
+    status: '🤖 *Bot online dan siap upload file!* \n\n✅ Semua sistem berjalan lancar.',
+    menu: '📋 *Menu*\n\nPilih opsi di bawah:',
+    list: '📋 Upload terbaru:\n\n',
+    stats: '📊 Total upload: {total}',
+    top: '🏆 Top uploader:\n\n',
+    search_prompt: '🔍 Kirim query untuk search: /search <filename>',
+    delete_prompt: '🗑️ Kirim nama file untuk delete: /delete <filename>',
+    report_sent: '✅ Report dikirim ke admin.',
+    admin_stats: '📊 Admin Stats:\nTotal uploads: {total}\nActive days: {days}',
+    banned_user: '🚫 User {id} banned.',
+    unbanned_user: '✅ User {id} unbanned.',
+    backup_done: '✅ Database di-backup ke {path}',
+    no_files: '📂 Tidak ada file ditemukan.',
+    access_denied: '❌ Akses ditolak.'
+  }
+};
+
+function getLang(ctx) {
+  return ctx.from && ctx.from.language_code === 'id' ? 'id' : 'en';
+}
+
+function t(key, lang, vars = {}) {
+  let msg = messages[lang][key] || messages['en'][key];
+  for (const [k, v] of Object.entries(vars)) {
+    msg = msg.replace(`{${k}}`, v);
+  }
+  return msg;
+}
+
 async function uploadFile(ctx, file, fileName, isPhoto = false) {
   try {
     const userId = ctx.from.id;
@@ -113,6 +178,7 @@ async function uploadFile(ctx, file, fileName, isPhoto = false) {
 }
 
 bot.start(async (ctx) => {
+  const lang = getLang(ctx);
   const keyboard = {
     inline_keyboard: [
       [{ text: '📋 Menu', callback_data: 'menu' }],
@@ -120,7 +186,7 @@ bot.start(async (ctx) => {
     ]
   };
   await ctx.replyWithPhoto('https://raw.githubusercontent.com/IbraDecode/Ubotku/main/IMG_20251014_234435_752.jpg', {
-    caption: '👋 *Halo!* \n\n📤 Kirim file (document, photo, audio, video, voice, sticker) untuk dapatkan URL GitHub raw. \n\n⚠️ Max 50MB\n\n💡 Bot ini menggunakan GitHub untuk hosting file.',
+    caption: t('start', lang),
     parse_mode: 'Markdown',
     reply_markup: keyboard
   });
